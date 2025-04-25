@@ -122,6 +122,7 @@ class ImageScraper:
         self.quit_driver()
 
 
+
 ''' 특정 페이지에서 이미지 크롤링 '''
 import os
 import requests as rq
@@ -130,7 +131,7 @@ from urllib.parse import urljoin
 from urllib.request import urlretrieve
 
 
-class ImageScraper_on_Specific_Page:
+class ImageScraper_on_SpecificPage:
     def __init__(self):
         self.page_url = ""
         self.image_name = ""
