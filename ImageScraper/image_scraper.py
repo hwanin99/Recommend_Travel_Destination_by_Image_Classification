@@ -3,16 +3,18 @@
 
 # In[21]:
 
+''' 일반적인 이미지 크롤링 '''
+import os
+import time
+import pandas as pd
 
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
-import time
-import os
-import pandas as pd
 from urllib.request import urlretrieve
+
 
 class ImageScraper:
     def __init__(self):
@@ -119,3 +121,48 @@ class ImageScraper:
         self.download_images()
         self.quit_driver()
 
+
+''' 특정 페이지에서 이미지 크롤링 '''
+import os
+import requests as rq
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
+from urllib.request import urlretrieve
+
+
+class ImageScraper_on_Specific_Page:
+    def __init__(self):
+        self.page_url = ""
+        self.image_name = ""
+        
+    def get_input(self):
+        self.page_url = input("이미지를 가져올 페이지 URL : ")
+        self.image_name = input("저장할 이미지 이름 : ")
+
+    def download_image(self):
+        res = rq.get(self.page_url)
+        soup = BeautifulSoup(res.text, 'lxml')
+
+        tags1 = soup.select('.tt_article_useless_p_margin.contents_style b')
+        tags2 = soup.select_one('.tt_article_useless_p_margin.contents_style').select('img')
+
+        for idx, tag in enumerate(tags1):
+            title = tag.text
+            title = title.split(' ')
+            del title[0]
+            title = '_'.join(map(str, title))
+            img_path = f'./{self.image_name}/{title}.jpg'
+
+            tag2 = tags2[idx]
+            img_url = tag2.get('src')
+            img_url = urljoin(self.page_url, img_url)  # 상대 경로를 절대 경로로 변환
+
+            os.makedirs(f'./{self.image_name}', exist_ok=True)
+
+            urlretrieve(img_url, img_path)  # 이미지 다운로드
+
+            print(f'Saved image: {img_path}')
+    
+    def scrape_images(self):
+        self.get_input()
+        self.download_image()
