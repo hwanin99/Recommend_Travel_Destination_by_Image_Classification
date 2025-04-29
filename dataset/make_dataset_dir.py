@@ -13,7 +13,7 @@ class Make_Dataset_Dir():
     def __init__(self,
                 modes=['train','valid'],
                 move_option='move',
-                class_names=[],
+                class_names=os.listdir('./dataset'),
                 train_split_ratio=7):
                     
         self.modes = modes
