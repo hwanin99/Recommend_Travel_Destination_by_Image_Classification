@@ -10,9 +10,14 @@ import shutil
 import time
 
 class Make_Dataset_Dir():
-    def __init__(self):
-        self.modes = ['train','valid']
-        self.move_option = move_option #'copy' or 'move'
+    def __init__(self,
+                modes=['train','valid'],
+                move_option='move',
+                class_names=[],
+                train_split_ratio=7):
+                    
+        self.modes = modes
+        self.move_option = move_option
         self.class_names = class_names 
         self.train_split_ratio = train_split_ratio
 
@@ -23,6 +28,7 @@ class Make_Dataset_Dir():
             for class_name in self.class_names:
                 os.makedirs(f'./{mode}/{class_name}',exist_ok=True)
 
+    
     def move_img(self):
         ''' 클래스 디렉토리로 split해서 옮기기 '''
         for class_name in self.class_names:
@@ -45,11 +51,13 @@ class Make_Dataset_Dir():
                 for i,valid_path in enumerate(valid):
                     shutil.move(valid_path,f'./{self.modes[1]}/{class_name}/{class_name}_{i}.jpg')
 
+    
     def check(self):
         for mode in self.modes:
             for class_name in self.class_names:
                 print(f"{mode}의 {class_name} 이미지: {len(os.listdir(f'./{mode}/{class_name}'))}장")
-  
+
+    
     def run(self):
         start = time.time()
         self.mk_dir()
@@ -57,4 +65,3 @@ class Make_Dataset_Dir():
         print(f'총 소요시간: {round(time.time()-start,5)}초')
         print('---------------------------------')
         self.check()
-
