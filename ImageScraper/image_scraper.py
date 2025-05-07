@@ -1,13 +1,11 @@
 ''' 일반적인 이미지 크롤링 '''
-import os
-import time
-import pandas as pd
-
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+import time
+import os
 from urllib.request import urlretrieve
 
 
@@ -16,7 +14,6 @@ class ImageScraper:
         self.keyword = ""
         self.image_name = ""
         self.image_cnt = 0
-        self.images_url = []
         self.driver = None
 
     def get_input(self):
@@ -25,95 +22,76 @@ class ImageScraper:
         self.image_name = input("저장할 이미지 이름 : ")
         self.image_cnt = int(input("저장할 이미지 개수 : "))
 
-    def scroll_down(self):
-        while len(self.images_url) < self.image_cnt:
-            time.sleep(3)
-            # 페이지 맨 아래로 스크롤
-            self.driver.find_element(By.XPATH, '//body').send_keys(Keys.END)
-            time.sleep(3)
-            
-            # 이미지 요소 가져오기
-            images = self.driver.find_elements(By.CSS_SELECTOR, ".YQ4gaf")
-            
-            # 새로운 이미지 URL을 추가
-            for image in images:
-                try:
-                    image.click()
-                    time.sleep(1)
-                    img = self.driver.find_element(By.XPATH, "//*[@id='Sva75c']/div[2]/div[2]/div/div[2]/c-wiz/div/div[3]/div[1]/a/img[2]")
-                    url = img.get_attribute('src') or img.get_attribute('data-src')
-                    if url and url not in self.images_url:
-                        self.images_url.append(url)
-                except:
-                    pass
-                
-                # 원하는 개수만큼 URL이 모였으면 종료
-                if len(self.images_url) == self.image_cnt:
-                    break
-            
-            # '더보기' 버튼이 보이면 클릭
-            try:
-                load_more_button = self.driver.find_element(By.XPATH, '//*[@id="islmp"]/div/div/div/div/div[1]/div[2]/div[2]/input')
-                if load_more_button.is_displayed():
-                    load_more_button.click()
-            except:
-                pass
-            
-            # '더 이상 표시할 콘텐츠가 없습니다.' 메시지가 보이면 종료
-            try:
-                no_more_content = self.driver.find_element(By.XPATH, '//div[@class="K25wae"]//*[text()="더 이상 표시할 콘텐츠가 없습니다."]')
-                if no_more_content.is_displayed():
-                    break
-            except:
-                pass
-        
-        return self.images_url
-
     def start_driver(self):
-        op = Options()
-        # op.add_argument('--headless')
-        op.add_argument('--no-sandbox')
-        op.add_argument("window-size=1920x1080")
-        op.add_argument("disable-gpu")
-        op.add_argument("lang=ko_KR")
-        op.add_argument('--disable-dev-shm-usage')
+        options = Options()
+#         options.add_argument('--headless')  # 창 숨기기
+        options.add_argument('--no-sandbox')
+        options.add_argument("window-size=1920x1080")
+        options.add_argument("disable-gpu")
+        options.add_argument("lang=ko_KR")
+        options.add_argument('--disable-dev-shm-usage')
 
-        # Service 객체로 ChromeDriver 경로 지정
         service = Service(executable_path="./chromedriver.exe")
-        self.driver = webdriver.Chrome(service=service, options=op)
+        self.driver = webdriver.Chrome(service=service, options=options)
 
     def search_images(self):
-        # 구글 이미지 검색 페이지로 이동
         self.driver.get('http://www.google.co.kr/imghp')
+        search_box = self.driver.find_element(By.NAME, 'q')
+        search_box.send_keys(self.keyword)
+        search_box.send_keys(Keys.RETURN)
 
-        # 검색어 입력
-        browser = self.driver.find_element(By.NAME, 'q')
-        browser.send_keys(self.keyword)
-        browser.send_keys(Keys.RETURN)
-
-    def download_images(self):
-        # 이미지 URL 수집
-        self.images_url = self.scroll_down()
-
-        # 중복된 URL 제거
-        self.images_url = pd.DataFrame(self.images_url)[0].unique()
-
-        # 이미지 다운로드
+    def scroll_and_download(self):
+        saved = 0
+        seen_urls = set()
         os.makedirs(f'./{self.image_name}', exist_ok=True)
-        for i, url in enumerate(self.images_url[:self.image_cnt]):
-            urlretrieve(url, f'./{self.image_name}/{self.image_name}_{i}.jpg')
+
+        while saved < self.image_cnt:
+            time.sleep(2)
+            self.driver.find_element(By.TAG_NAME, 'body').send_keys(Keys.END)
+            time.sleep(2)
+
+            thumbnails = self.driver.find_elements(By.CSS_SELECTOR, ".YQ4gaf")
+
+            for thumb in thumbnails:
+                try:
+                    thumb.click()
+                    time.sleep(1.5)
+
+                    img = self.driver.find_element(By.XPATH, "//*[@id='Sva75c']//img[@jsname='kn3ccd']")
+                    url = img.get_attribute('src') or img.get_attribute('data-src')
+
+                    if url and url.startswith("http") and url not in seen_urls:
+                        seen_urls.add(url)
+                        file_path = f'./{self.image_name}/{self.image_name}_{saved}.jpg'
+                        urlretrieve(url, file_path)
+                        print(f"[{saved + 1}] 저장 완료: {file_path}")
+                        saved += 1
+
+                    if saved >= self.image_cnt:
+                        break
+
+                except Exception as e:
+                    continue
+
+            # '더보기' 버튼 클릭
+            try:
+                load_more = self.driver.find_element(By.XPATH, '//input[@value="더보기"]')
+                if load_more.is_displayed():
+                    load_more.click()
+                    time.sleep(1)
+            except:
+                pass
+
+        print(f"\n✅ 총 {saved}장의 이미지를 저장했습니다.")
 
     def quit_driver(self):
-        # 브라우저 종료
         self.driver.quit()
 
     def scrape_images(self):
-        # 사용자 입력 받기
         self.get_input()
-
         self.start_driver()
         self.search_images()
-        self.download_images()
+        self.scroll_and_download()
         self.quit_driver()
 
 
