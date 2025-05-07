@@ -1,8 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[21]:
-
 ''' 일반적인 이미지 크롤링 '''
 import os
 import time
